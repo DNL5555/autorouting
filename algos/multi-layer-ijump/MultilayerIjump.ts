@@ -351,7 +351,7 @@ export class MultilayerIjump extends GeneralizedAstarAutorouter {
           dir.dx === forwardDir.dx &&
           dir.dy === forwardDir.dy &&
           dir.dl === forwardDir.dl &&
-          node.parent?.obstacleHit
+          node.obstacleHit
         ) {
           return false
         }
@@ -410,6 +410,7 @@ export class MultilayerIjump extends GeneralizedAstarAutorouter {
         if (node.l < this.layerCount - 1) {
           travelDirs3.push({
             ...travelDir,
+            obstacle: null,
             travelDistance: 0,
             enterMarginCost: 0,
             travelMarginCostFactor: 1,
@@ -421,6 +422,7 @@ export class MultilayerIjump extends GeneralizedAstarAutorouter {
         if (node.l > 0) {
           travelDirs3.push({
             ...travelDir,
+            obstacle: null,
             travelDistance: 0,
             enterMarginCost: 0,
             travelMarginCostFactor: 1,
@@ -450,7 +452,7 @@ export class MultilayerIjump extends GeneralizedAstarAutorouter {
 
       if (
         goalDistAlongTravelDir < travelDir.wallDistance &&
-        goalDistAlongTravelDir > 0 &&
+        goalDistAlongTravelDir > 1e-6 &&
         isGoalInTravelDir
       ) {
         const isGoalOnSameLayer = node.l === goalPoint.l
@@ -465,13 +467,19 @@ export class MultilayerIjump extends GeneralizedAstarAutorouter {
             this.VIA_DIAMETER + this.OBSTACLE_MARGIN + this.defaultGoalViaMargin
         }
 
+        const travelDistance = goalDistAlongTravelDir - stopShortDistance
         travelDirs3.push({
           ...travelDir,
-          travelDistance: goalDistAlongTravelDir - stopShortDistance,
+          obstacle:
+            travelDir.wallDistance - travelDistance <= this.OBSTACLE_MARGIN
+              ? travelDir.obstacle
+              : null,
+          travelDistance,
           enterMarginCost: 0,
           travelMarginCostFactor: 1,
         })
-      } else if (
+      }
+      if (
         overcomeDistance !== null &&
         overcomeDistance < travelDir.wallDistance
       ) {
@@ -483,20 +491,17 @@ export class MultilayerIjump extends GeneralizedAstarAutorouter {
           ) {
             travelDirs3.push({
               ...travelDir,
+              obstacle: null,
               travelDistance: overcomeDistance - this.OBSTACLE_MARGIN + margin,
               enterMarginCost: enterCost,
               travelMarginCostFactor: travelCostFactor,
             })
           }
         }
-        if (travelDir.wallDistance === Infinity) {
-          travelDirs3.push({
-            ...travelDir,
-            travelDistance: goalDistAlongTravelDir,
-            enterMarginCost: 0,
-            travelMarginCostFactor: 1,
-          })
-        } else if (travelDir.wallDistance > this.largestMargin) {
+        if (
+          travelDir.wallDistance !== Infinity &&
+          travelDir.wallDistance > this.largestMargin
+        ) {
           for (const { margin, enterCost, travelCostFactor } of this
             .marginsWithCosts) {
             if (travelDir.wallDistance > this.largestMargin + margin) {
